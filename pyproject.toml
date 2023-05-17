@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "kurama"
+version = "0.1.0"
+description = ""
+authors = ["alec <fkalec@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+openai = "^0.27.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
