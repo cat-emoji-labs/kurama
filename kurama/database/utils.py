@@ -21,23 +21,19 @@ def retrieve_pipeline_for_query(columns, query):
     return res
 
 
-def upload_csv(collection):
-    df = pd.read_csv("sales.csv")
-
+def upload_csv(csv, collection):
+    df = pd.read_csv(csv)
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
-
     columns = df.columns.tolist()
     first_row = df.iloc[0]
     types = build_types_array(columns=columns, first_row=first_row)
-
     for _, row in df.iterrows():
         try:
             transformed_row = transform_row(types, row.values.tolist())
             document = dict(zip(columns, transformed_row))
             collection.insert_one(document=document)
-            print(document)
-            break
         except Exception as e:
             # Discard rows that don't conform to the type
+            # TODO: Display discarded rows to the user
             print(e, row.values.tolist())
