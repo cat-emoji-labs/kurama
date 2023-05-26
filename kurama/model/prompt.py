@@ -6,42 +6,22 @@ And this example of a row:
 {row}
 
 Output a JSON where the keys are the names of each column, and the values are the values of the rows, corresponding to each column (infer the type).
+
+For columns that are likely to be date-time objects, list the value as "datetime" instead.
 """
 
 pipeline_prompt = """
-You are a data scientist writing pipeline queries in MongoDB. You are only capable of communicating with valid JSON, and no other text.
+You are a data scientist writing pipeline queries in MongoDB. You are only capable of communicating with a list of valid JSON, and no other text.
 
-Output a list of JSON objects representing the correct MongoDB pipeline that answers the query.
+Output a list of Python-compatible JSON objects representing the correct MongoDB pipeline that answers the query. 
+
+Never match literals for string type columns, always use Regex to find similar strings instead.
+Today's date is {date}. When dealing with dates, represent them as ISO string literals and use the $dateFromString operator in the aggregation pipeline to convert them.
+Everytime you use null, replace it with None.
 
 Columns:
 {columns}
 
 Query:
 {query}
-
-Example:
-
-Columns:
-Order ID,Product,Quantity Ordered,Price Each,Order Date,Purchase Address
-
-Query:
-What product is the most ordered?
-
-Output:
-[
-    {{
-        '$group': {{
-            '_id': '$Product',
-            'totalOrdered': {{ '$sum': '$Quantity Ordered' }}
-        }}
-    }},
-    {{
-        '$sort': {{
-            'totalOrdered': -1
-        }}
-    }},
-    {{
-        '$limit': 1
-    }}
-]
 """
