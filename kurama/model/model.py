@@ -18,15 +18,18 @@ def ask_model_with_retry(prompt, func, max_retries=3):
     This is useful since model outputs are undeterministic and may be malformatted.
     Defaults to 3 maximum retries.
     """
+    # TODO: Handle OpenAI API failures gracefully
+
     retries = 0
     while retries < max_retries:
+        if retries:
+            print(f"Retrying ask_model - Attempt {retries}")
         try:
             llm_output = ask_model(prompt)
-            print(f"Attempt {retries+1} - LLM Output: {llm_output}")
+            print(f"Attempt {retries + 1} - Raw LLM Output: {llm_output}")
             res = func(llm_output)
             return res
         except Exception as e:
-            print("Retrying ask_model - Try ", retries + 1)
             print(f"An error occurred: {str(e)}")
             retries += 1
     return None
