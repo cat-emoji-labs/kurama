@@ -5,9 +5,12 @@ import pandas as pd
 import json
 import ast
 import datetime
+from typing import List
+from fastapi import UploadFile
+from pymongo.collection import Collection
 
 
-def _transform_row(types, row):
+def _transform_row(types: List[any], row: List[any]):
     return list(
         map(
             lambda t, v: datetime.datetime.strptime(v, "%m/%d/%y %H:%M")
@@ -19,7 +22,7 @@ def _transform_row(types, row):
     )
 
 
-def _is_allowed_types(node: ast.AST, allowed_types=DEFAULT_AST_ALLOWED_TYPES):
+def _is_allowed_types(node: ast.AST, allowed_types: tuple = DEFAULT_AST_ALLOWED_TYPES):
     return isinstance(
         node,
         (allowed_types),
@@ -58,19 +61,19 @@ def _custom_eval(astr: str):
     return eval(astr)
 
 
-def _build_types_array(columns, first_row):
+def _build_types_array(columns: List[str], first_row: List[str]):
     prompt = type_inference_prompt.format(columns=columns, row=first_row)
     res = ask_model_with_retry(prompt=prompt, func=json.loads)
     return [type(v) if v != "datetime" else datetime.datetime.strptime for v in res.values()]
 
 
-def retrieve_pipeline_for_query(columns, query):
-    prompt = pipeline_prompt.format(columns=columns, query=query, date="June 20th 2019")
+def retrieve_pipeline_for_query(columns: List[str], query: str, date: datetime.datetime):
+    prompt = pipeline_prompt.format(columns=columns, query=query, date=date)
     res = ask_model_with_retry(prompt=prompt, func=_custom_eval)
     return res
 
 
-def upload_csv(csv, collection):
+def upload_csv(csv: UploadFile.file, collection: Collection):
     df = pd.read_csv(csv)
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
