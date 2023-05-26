@@ -5,8 +5,7 @@ import pandas as pd
 import json
 import ast
 import datetime
-from typing import List
-from fastapi import UploadFile
+from typing import List, BinaryIO
 from pymongo.collection import Collection
 
 
@@ -73,7 +72,7 @@ def retrieve_pipeline_for_query(columns: List[str], query: str, date: datetime.d
     return res
 
 
-def upload_csv(csv: UploadFile.file, collection: Collection):
+def upload_csv(csv: BinaryIO, collection: Collection):
     df = pd.read_csv(csv)
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
