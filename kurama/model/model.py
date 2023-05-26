@@ -22,9 +22,11 @@ def ask_model_with_retry(prompt, func, max_retries=3):
     while retries < max_retries:
         try:
             llm_output = ask_model(prompt)
+            print(f"Attempt {retries+1} - LLM Output: {llm_output}")
             res = func(llm_output)
             return res
         except Exception as e:
+            print("Retrying ask_model - Try ", retries + 1)
             print(f"An error occurred: {str(e)}")
             retries += 1
     return None
