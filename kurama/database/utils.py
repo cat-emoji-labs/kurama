@@ -1,22 +1,31 @@
-from kurama.model.model import ask_model_with_retry
+from kurama.model.model import ask_model_with_retry, ask_model
 from kurama.model.prompt import type_inference_prompt, pipeline_prompt
 import pandas as pd
 import json
 import ast
+import datetime
 
 
 def transform_row(types, row):
-    return list(map(lambda t, v: t(v) if v else None, types, row))
+    return list(
+        map(
+            lambda t, v: datetime.datetime.strptime(v, "%m/%d/%y %H:%M")
+            if t == datetime.datetime.strptime and v
+            else t(v),
+            types,
+            row,
+        )
+    )
 
 
 def build_types_array(columns, first_row):
     prompt = type_inference_prompt.format(columns=columns, row=first_row)
     res = ask_model_with_retry(prompt=prompt, func=json.loads)
-    return [type(v) for v in res.values()]
+    return [type(v) if v != "datetime" else datetime.datetime.strptime for v in res.values()]
 
 
 def retrieve_pipeline_for_query(columns, query):
-    prompt = pipeline_prompt.format(columns=columns, query=query)
+    prompt = pipeline_prompt.format(columns=columns, query=query, date="June 20th 2019")
     res = ask_model_with_retry(prompt=prompt, func=ast.literal_eval)
     return res
 
