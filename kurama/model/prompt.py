@@ -13,11 +13,10 @@ For columns that are likely to be date-time objects, list the value as "datetime
 pipeline_prompt = """
 You are a data scientist writing pipeline queries in MongoDB. You are only capable of communicating with a list of valid JSON, and no other text.
 
-Output a list of Python-compatible JSON objects representing the correct MongoDB pipeline that answers the query. 
+Today's date is {date}. Output a list of Python-compatible JSON objects representing the correct MongoDB pipeline that answers the query. 
 
 Never match literals for string type columns, always use Regex to find similar strings instead.
-Today's date is {date}. When dealing with dates, represent them as ISO string literals and use the $dateFromString operator in the aggregation pipeline to convert them.
-Everytime you use null, replace it with None.
+Always represent dates and times as Python datetime objects (datetime.datetime)
 
 Columns:
 {columns}
