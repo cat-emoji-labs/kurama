@@ -9,7 +9,11 @@ from typing import List, BinaryIO
 from pymongo.collection import Collection
 
 
-def _transform_row(types: List[any], row: List[any]):
+def _transform_row(types: List[any], row: List[any]) -> List[any]:
+    """
+    Transforms a Pandas DataFrame row using a type array.
+    Both input arrays must be the same dimension.
+    """
     return list(
         map(
             lambda t, v: datetime.datetime.strptime(v, "%m/%d/%y %H:%M")
@@ -21,7 +25,10 @@ def _transform_row(types: List[any], row: List[any]):
     )
 
 
-def _is_allowed_types(node: ast.AST, allowed_types: tuple = DEFAULT_AST_ALLOWED_TYPES):
+def _is_allowed_types(node: ast.AST, allowed_types: tuple = DEFAULT_AST_ALLOWED_TYPES) -> bool:
+    """
+    Checks if an AST Node is in allowed_types OR is an instance of a datetime object.
+    """
     return isinstance(
         node,
         (allowed_types),
@@ -32,23 +39,9 @@ def _is_allowed_types(node: ast.AST, allowed_types: tuple = DEFAULT_AST_ALLOWED_
     )
 
 
-def _custom_eval(astr: str):
+def _custom_eval(astr: str) -> any:
     """
-    Performs a walk on the AST
-    Safely evaluates a string as a Python expression using the `eval()` function.
-
-    Parameters:
-    astr (str): A string containing a Python expression to evaluate.
-
-    Returns:
-    Any: The result of evaluating the expression.
-
-    Raises:
-    ValueError: If the input string contains any AST nodes that are not one of the allowed types.
-
-    Assumptions/Limitations:
-    - The input string must be a valid Python expression.
-    - The allowed types for AST nodes are: `ast.Module`, `ast.Expr`, `ast.Dict`, `ast.Str`, `ast.Attribute`, `ast.Num`, `ast.Name`, `ast.Load`, `ast.Tuple`, `ast.List`, `ast.Call` (if the function being called is the `datetime` module).
+    Parses raw LLM output, performs a walk on AST nodes for validation, and safely returns the result as a Python expression using the `eval()` function.
     """
     try:
         tree = ast.parse(astr)
@@ -60,19 +53,33 @@ def _custom_eval(astr: str):
     return eval(astr)
 
 
-def _build_types_array(columns: List[str], first_row: List[str]):
+def _build_types_array(columns: List[str], first_row: List[str]) -> List[function]:
+    """
+    (LLM function)
+    Builds an array of types using the columns and first row from a CSV file.
+    """
     prompt = type_inference_prompt.format(columns=columns, row=first_row)
     res = ask_model_with_retry(prompt=prompt, func=json.loads)
     return [type(v) if v != "datetime" else datetime.datetime.strptime for v in res.values()]
 
 
-def retrieve_pipeline_for_query(columns: List[str], query: str, date: datetime.datetime):
+def retrieve_pipeline_for_query(
+    columns: List[str], query: str, date: datetime.datetime = datetime.datetime.today()
+) -> any:
+    """
+    (LLM function)
+    Retrieves a valid MongoDB pipeline using data columns, a user query, and a date (defaults to today).
+    """
     prompt = pipeline_prompt.format(columns=columns, query=query, date=date)
     res = ask_model_with_retry(prompt=prompt, func=_custom_eval)
     return res
 
 
-def upload_csv(csv: BinaryIO, collection: Collection):
+def upload_csv(csv: BinaryIO, collection: Collection) -> None:
+    """
+    Uploads a CSV file to a supplied MongoDB collection.
+    Includes type-inference via LLM.
+    """
     df = pd.read_csv(csv)
     # Replace NaN values
     df = df.where(pd.notnull(df), None)

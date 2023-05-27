@@ -19,6 +19,7 @@ def ask_model_with_retry(prompt, func, max_retries=3):
     Defaults to 3 maximum retries.
     """
     # TODO: Handle OpenAI API failures gracefully
+    # TODO: Implement an exponential backoff
 
     retries = 0
     while retries < max_retries:

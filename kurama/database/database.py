@@ -12,7 +12,7 @@ class NLPDatabase:
     def _get_db_for_user(self, user_id: str):
         return self.client[user_id]
 
-    def get_collections(self, user_id: str):
+    def get_collection_names(self, user_id: str):
         db = self._get_db_for_user(user_id)
         return db.list_collection_names()
 
