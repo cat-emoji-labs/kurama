@@ -1,5 +1,5 @@
 from kurama.model.model import ask_model_with_retry
-from kurama.model.prompt import type_inference_prompt, pipeline_prompt
+from kurama.model.prompt import type_inference_prompt, pipeline_prompt, schema_prompt
 from kurama.config.constants import DEFAULT_AST_ALLOWED_TYPES
 import pandas as pd
 import json
@@ -53,7 +53,7 @@ def _custom_eval(astr: str) -> any:
     return eval(astr)
 
 
-def _build_types_array(columns: List[str], first_row: List[str]) -> List[function]:
+def _build_types_array(columns: List[str], first_row: List[str]) -> List[type]:
     """
     (LLM function)
     Builds an array of types using the columns and first row from a CSV file.
@@ -72,6 +72,16 @@ def retrieve_pipeline_for_query(
     """
     prompt = pipeline_prompt.format(columns=columns, query=query, date=date)
     res = ask_model_with_retry(prompt=prompt, func=_custom_eval)
+    return res
+
+
+def retrieve_best_collection_name(schemas: str, query: str) -> str:
+    """
+    (LLM function)
+    Uses LLM as a router to retrieve the collection that best matches the query.
+    """
+    prompt = schema_prompt.format(schemas=schemas, query=query)
+    res = ask_model_with_retry(prompt=prompt)
     return res
 
 

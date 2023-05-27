@@ -27,5 +27,13 @@ class NLPDatabase:
             return res.keys()
         # TODO: Return an error here
 
+    def get_all_schemas(self, user_id):
+        collection_names = self.get_collection_names(user_id=user_id)
+        schema = ""
+        for collection_name in collection_names:
+            columns = self.get_collection_schema(user_id=user_id, collection_id=collection_name)
+            schema += f"Collection name: {collection_name} Columns: {list(columns)}\n"
+        return schema
+
     def execute_pipeline(self, pipeline: List[dict], collection: Collection):
         return pd.DataFrame(list(collection.aggregate(pipeline)))

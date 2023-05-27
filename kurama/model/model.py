@@ -12,7 +12,7 @@ def ask_model(prompt):
     )["choices"][0]["message"]["content"]
 
 
-def ask_model_with_retry(prompt, func, max_retries=3):
+def ask_model_with_retry(prompt, func=lambda x: x, max_retries=3):
     """
     Retries `ask_model` if the `func` argument performed on the LLM output throws an error.
     This is useful since model outputs are undeterministic and may be malformatted.

@@ -24,3 +24,16 @@ Columns:
 Query:
 {query}
 """
+
+schema_prompt = """
+You are a helpful assistant. You are only capable of communicating with a collection name, and no other text.
+
+Given MongoDB collection names and their corresponding schemas (represented as JSON key value pairs), output as a string which collection name is best suited to answer the user query.
+Output only the collection name and no other text.
+
+Schemas:
+{schemas}
+
+User Query:
+{query}
+"""
