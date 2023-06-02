@@ -1,5 +1,5 @@
 import openai
-from kurama.config.constants import OPENAI_MODEL
+from kurama.config.constants import OPENAI_MODEL, DEFAULT_TEMPERATURE
 from kurama.config.environment import OPENAI_API_KEY
 
 openai.api_key = OPENAI_API_KEY
@@ -9,6 +9,7 @@ def ask_model(prompt):
     return openai.ChatCompletion.create(
         model=OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
+        temperature=DEFAULT_TEMPERATURE,
     )["choices"][0]["message"]["content"]
 
 

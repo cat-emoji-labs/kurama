@@ -2,6 +2,8 @@ import ast
 
 OPENAI_MODEL = "gpt-3.5-turbo"
 
+DEFAULT_TEMPERATURE = 0
+
 DEFAULT_AST_ALLOWED_TYPES = (
     ast.Module,
     ast.Expr,
@@ -15,4 +17,5 @@ DEFAULT_AST_ALLOWED_TYPES = (
     ast.List,
     ast.UnaryOp,  # for descending/ascending in a pipeline
     ast.USub,  # for descending/ascending in a pipeline
+    ast.Constant,  # for null values
 )
