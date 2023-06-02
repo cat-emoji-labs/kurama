@@ -1,6 +1,7 @@
 from kurama.model.model import ask_model_with_retry
-from kurama.model.prompt import type_inference_prompt, pipeline_prompt, schema_prompt
+from kurama.model.prompt import *
 from kurama.config.constants import DEFAULT_AST_ALLOWED_TYPES
+from kurama.database.database import PostgresDatabase
 import pandas as pd
 import json
 import ast
@@ -75,6 +76,56 @@ def retrieve_pipeline_for_query(
     return res
 
 
+def _parse_sql_from_llm_out(llm_output: str):
+    import re
+
+    pattern = r"```(.*?)```"
+    matches = re.findall(pattern, llm_output, re.DOTALL)
+    return matches[-1].replace("SQL", "")  # only return the last SQL query
+
+
+def _is_valid_sql(sql: str):
+    import sqlparse
+
+    parsed = sqlparse.parse(sql)
+    if len(parsed) > 0:
+        return sql
+    else:
+        raise ValueError("Invalid SQL statement")
+
+
+# TODO: Move this function into database class
+def get_sql_for_query(
+    columns: List[str],
+    query: str,
+    pg: PostgresDatabase,
+    date: datetime.datetime = datetime.datetime.today(),
+):
+    # Format the prompts
+    prompt = sql_query_prompt.format(columns=columns, query=query)
+    system_prompt = sql_system_prompt.format(date=date)
+
+    # Get dataframe
+    df = ask_model_with_retry(
+        prompt=prompt,
+        system_prompt=system_prompt,
+        func=[_parse_sql_from_llm_out, _is_valid_sql, pg.execute],
+        retry_prompt=retry_sql_query_prompt,
+    )
+    return df
+
+
+def _get_sql_table_for_query(columns: List[str], first_row: List[str], name: str):
+    prompt = sql_create_table_prompt.format(columns=columns, row=first_row, name=name)
+    res = ask_model_with_retry(
+        prompt=prompt,
+        system_prompt=sql_create_table_system_prompt,
+        func=[_parse_sql_from_llm_out, _is_valid_sql],
+    )
+    return res
+
+
+# TODO: Move this function into database class
 def retrieve_best_collection_name(schemas: str, query: str) -> str:
     """
     (LLM function)
@@ -85,7 +136,8 @@ def retrieve_best_collection_name(schemas: str, query: str) -> str:
     return res
 
 
-def upload_csv(csv: BinaryIO, collection: Collection) -> None:
+# TODO: Move this function into database class
+def upload_csv(csv: BinaryIO, name: str, collection: Collection, pg: PostgresDatabase) -> None:
     """
     Uploads a CSV file to a supplied MongoDB collection.
     Includes type-inference via LLM.
@@ -93,15 +145,24 @@ def upload_csv(csv: BinaryIO, collection: Collection) -> None:
     df = pd.read_csv(csv)
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
+
+    # Create the table
     columns = df.columns.tolist()
     first_row = df.iloc[0]
-    types = _build_types_array(columns=columns, first_row=first_row)
+    create_table_statement = _get_sql_table_for_query(
+        columns=columns, first_row=first_row, name=name
+    )
+    pg.create_table(sql=create_table_statement)
+
+    # Get the table to insert into
+    table = pg.get_table_by_name(table_name=name)
+
+    # This takes way too long
     for _, row in df.iterrows():
         try:
-            transformed_row = _transform_row(types, row.values.tolist())
-            document = dict(zip(columns, transformed_row))
-            collection.insert_one(document=document)
+            vals = tuple(row.values.tolist())
+            pg.insert_into(table, vals)
         except Exception as e:
             # Discard rows that don't conform to the type
             # TODO: Display discarded rows to the user
-            print(e, row.values.tolist())
+            print("Couldn't insert: ", row.values.tolist())
