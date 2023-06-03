@@ -3,11 +3,9 @@ from kurama.model.prompt import *
 from kurama.config.constants import DEFAULT_AST_ALLOWED_TYPES
 from kurama.database.database import PostgresDatabase
 import pandas as pd
-import json
 import ast
 import datetime
 from typing import List, BinaryIO
-from pymongo.collection import Collection
 
 
 def _transform_row(types: List[any], row: List[any]) -> List[any]:
@@ -54,28 +52,6 @@ def _custom_eval(astr: str) -> any:
     return eval(astr)
 
 
-def _build_types_array(columns: List[str], first_row: List[str]) -> List[type]:
-    """
-    (LLM function)
-    Builds an array of types using the columns and first row from a CSV file.
-    """
-    prompt = type_inference_prompt.format(columns=columns, row=first_row)
-    res = ask_model_with_retry(prompt=prompt, func=json.loads)
-    return [type(v) if v != "datetime" else datetime.datetime.strptime for v in res.values()]
-
-
-def retrieve_pipeline_for_query(
-    columns: List[str], query: str, date: datetime.datetime = datetime.datetime.today()
-) -> any:
-    """
-    (LLM function)
-    Retrieves a valid MongoDB pipeline using data columns, a user query, and a date (defaults to today).
-    """
-    prompt = pipeline_prompt.format(columns=columns, query=query, date=date)
-    res = ask_model_with_retry(prompt=prompt, func=_custom_eval)
-    return res
-
-
 def _parse_sql_from_llm_out(llm_output: str):
     import re
 
@@ -94,8 +70,19 @@ def _is_valid_sql(sql: str):
         raise ValueError("Invalid SQL statement")
 
 
-# TODO: Move this function into database class
-def get_sql_for_query(
+def _create_sql_table_for_csv(
+    columns: List[str], first_row: List[str], name: str, pg: PostgresDatabase
+) -> None:
+    prompt = sql_create_table_prompt.format(columns=columns, row=first_row, name=name)
+    ask_model_with_retry(
+        prompt=prompt,
+        system_prompt=sql_create_table_system_prompt,
+        func=[_parse_sql_from_llm_out, _is_valid_sql, pg.create_table],
+        retry_prompt=retry_sql_query_prompt,
+    )
+
+
+def retrieve_df_for_query(
     columns: List[str],
     query: str,
     pg: PostgresDatabase,
@@ -115,29 +102,7 @@ def get_sql_for_query(
     return df
 
 
-def _get_sql_table_for_query(columns: List[str], first_row: List[str], name: str):
-    prompt = sql_create_table_prompt.format(columns=columns, row=first_row, name=name)
-    res = ask_model_with_retry(
-        prompt=prompt,
-        system_prompt=sql_create_table_system_prompt,
-        func=[_parse_sql_from_llm_out, _is_valid_sql],
-    )
-    return res
-
-
-# TODO: Move this function into database class
-def retrieve_best_collection_name(schemas: str, query: str) -> str:
-    """
-    (LLM function)
-    Uses LLM as a router to retrieve the collection that best matches the query.
-    """
-    prompt = schema_prompt.format(schemas=schemas, query=query)
-    res = ask_model_with_retry(prompt=prompt)
-    return res
-
-
-# TODO: Move this function into database class
-def upload_csv(csv: BinaryIO, name: str, collection: Collection, pg: PostgresDatabase) -> None:
+def upload_csv(csv: BinaryIO, name: str, pg: PostgresDatabase) -> None:
     """
     Uploads a CSV file to a supplied MongoDB collection.
     Includes type-inference via LLM.
@@ -149,10 +114,7 @@ def upload_csv(csv: BinaryIO, name: str, collection: Collection, pg: PostgresDat
     # Create the table
     columns = df.columns.tolist()
     first_row = df.iloc[0]
-    create_table_statement = _get_sql_table_for_query(
-        columns=columns, first_row=first_row, name=name
-    )
-    pg.create_table(sql=create_table_statement)
+    _create_sql_table_for_csv(columns=columns, first_row=first_row, name=name, pg=pg)
 
     # Get the table to insert into
     table = pg.get_table_by_name(table_name=name)
@@ -163,6 +125,22 @@ def upload_csv(csv: BinaryIO, name: str, collection: Collection, pg: PostgresDat
             vals = tuple(row.values.tolist())
             pg.insert_into(table, vals)
         except Exception as e:
-            # Discard rows that don't conform to the type
+            # Discard rows that don't conform to the schema
             # TODO: Display discarded rows to the user
             print("Couldn't insert: ", row.values.tolist())
+
+
+def transpose_df(df: pd.DataFrame) -> List[object]:
+    """
+    Formats a Pandas DataFrame into an array of objects.
+    """
+    dict = df.head().to_dict()
+    cols, rows = dict.keys(), [d.values() for d in dict.values()]
+    res = []
+    transposed_rows = [list(x) for x in zip(*rows)]
+    for row in transposed_rows:
+        obj = {}
+        for col, val in zip(cols, row):
+            obj[col] = val
+        res.append(obj)
+    return res
