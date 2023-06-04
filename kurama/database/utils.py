@@ -129,7 +129,7 @@ def upload_csv(csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str
     table_name = f"{user_id}.{file_name}"
     _create_sql_table_for_csv(columns=columns, first_row=first_row, table_name=table_name, pg=pg)
 
-    # Get the table to insert into, this function is schema aware so we just use file_name as table_name here
+    # Get the table
     table = pg.get_table_by_name(table_name=table_name, user_id=user_id)
 
     # This takes way too long
