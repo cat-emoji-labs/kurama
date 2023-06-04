@@ -6,6 +6,7 @@ import pandas as pd
 import ast
 import datetime
 from typing import List, BinaryIO
+import re
 
 
 def _transform_row(types: List[any], row: List[any]) -> List[any]:
@@ -71,9 +72,12 @@ def _is_valid_sql(sql: str):
 
 
 def _create_sql_table_for_csv(
-    columns: List[str], first_row: List[str], name: str, pg: PostgresDatabase
+    columns: List[str],
+    first_row: List[str],
+    table_name: str,
+    pg: PostgresDatabase,
 ) -> None:
-    prompt = sql_create_table_prompt.format(columns=columns, row=first_row, name=name)
+    prompt = sql_create_table_prompt.format(columns=columns, row=first_row, table_name=table_name)
     ask_model_with_retry(
         prompt=prompt,
         system_prompt=sql_create_table_system_prompt,
@@ -102,7 +106,7 @@ def retrieve_df_for_query(
     return df
 
 
-def upload_csv(csv: BinaryIO, name: str, pg: PostgresDatabase) -> None:
+def upload_csv(csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str) -> None:
     """
     Uploads a CSV file to a supplied MongoDB collection.
     Includes type-inference via LLM.
@@ -111,13 +115,22 @@ def upload_csv(csv: BinaryIO, name: str, pg: PostgresDatabase) -> None:
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
 
+    # Replace hyphens in the UUID
+    user_id = re.sub(r"-", "_", user_id)
+
+    # Create the schema
+    pg.create_schema_for_user_if_not_exists(user_id=user_id)
+
     # Create the table
     columns = df.columns.tolist()
     first_row = df.iloc[0]
-    _create_sql_table_for_csv(columns=columns, first_row=first_row, name=name, pg=pg)
 
-    # Get the table to insert into
-    table = pg.get_table_by_name(table_name=name)
+    # TODO: Prevent SQL injections via file_name
+    table_name = f"{user_id}.{file_name}"
+    _create_sql_table_for_csv(columns=columns, first_row=first_row, table_name=table_name, pg=pg)
+
+    # Get the table to insert into, this function is schema aware so we just use file_name as table_name here
+    table = pg.get_table_by_name(table_name=table_name, user_id=user_id)
 
     # This takes way too long
     for _, row in df.iterrows():
