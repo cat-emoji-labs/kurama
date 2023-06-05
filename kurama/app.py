@@ -1,5 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, Request
-from kurama.database.utils import upload_csv, retrieve_df_for_query, transpose_df
+from kurama.database.utils import (
+    upload_csv,
+    retrieve_df_for_query,
+    transpose_df,
+    get_schema_name_from_user_id,
+)
 from kurama.database.database import PostgresDatabase
 from kurama.config.environment import HOST, PORT
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,12 +32,11 @@ async def upload(user_id: str, collection_id: str, csvFile: UploadFile = File(..
     try:
         # TODO: Implement ID-based tables/schemas
         # TODO: Handle file types other than CSV
-
-        # Replace hyphens in the UUID - this should be middleware
-        user_id = re.sub(r"-", "_", user_id)
-
         upload_csv(
-            csv=csvFile.file, file_name=csvFile.filename.split(".")[0], pg=pg, user_id=user_id
+            csv=csvFile.file,
+            file_name=csvFile.filename.split(".")[0],
+            pg=pg,
+            user_id=user_id,
         )
         return {"message": "CSV file uploaded successfully"}
     except Exception as e:
@@ -47,19 +51,12 @@ async def ask(request: Request, user_id: str):
     print("Query: ", query)
 
     try:
-        # TODO: Add an agentic routing layer
-
-        # Replace hyphens in the UUID - this should be middleware
-        user_id = re.sub(r"-", "_", user_id)
-
-        columns = pg.get_table_schemas(user_id=user_id)
         df = retrieve_df_for_query(
-            columns,
             query,
             pg=pg,
+            user_id=user_id,
             date=datetime.datetime.strptime("June 20th 2019", "%B %dth %Y"),
         )
-
         # Format results
         transposed_df = transpose_df(df=df)
         return {"message": "success", "data": transposed_df}

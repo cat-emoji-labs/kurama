@@ -39,32 +39,35 @@ class PostgresDatabase:
             ]
         return schema_names
 
-    def _get_tables(self, user_id):
+    def _get_tables(self, schema_name):
         metadata = MetaData()
-        metadata.reflect(bind=self.engine, schema=user_id)
+        metadata.reflect(bind=self.engine, schema=schema_name)
         return [table for table in metadata.sorted_tables]
 
     def _get_table_names(self):
         return [table.name for table in self._get_tables()]
 
-    def get_table_schemas(self, user_id):
+    def get_table_schemas(self, schema_name):
         """
         Retrieves a list of table schemas in JSON format from a list of table names.
         """
-        return [self._build_schema_json_from_table(table) for table in self._get_tables(user_id)]
+        return [
+            self._build_schema_json_from_table(table)
+            for table in self._get_tables(schema_name=schema_name)
+        ]
 
-    def get_table_by_name(self, table_name, user_id):
+    def get_table_by_name(self, table_name, schema_name):
         """
         Retrieve a SQLAlchemy Table object by the table_name.
         """
         metadata = MetaData()
-        metadata.reflect(bind=self.engine, schema=user_id)
+        metadata.reflect(bind=self.engine, schema=schema_name)
         table = metadata.tables.get(table_name)
         return table
 
-    def create_schema_for_user_if_not_exists(self, user_id) -> None:
+    def create_schema_for_user_if_not_exists(self, schema_name) -> None:
         with self.engine.connect() as connection:
-            query = text(f"CREATE SCHEMA IF NOT EXISTS {user_id}")
+            query = text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
             connection.execute(query)
             connection.commit()
 

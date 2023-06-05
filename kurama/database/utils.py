@@ -87,11 +87,15 @@ def _create_sql_table_for_csv(
 
 
 def retrieve_df_for_query(
-    columns: List[str],
     query: str,
     pg: PostgresDatabase,
+    user_id: str,
     date: datetime.datetime = datetime.datetime.today(),
 ):
+    # Retrieve relevant columns and get schema name
+    schema_name = get_schema_name_from_user_id(user_id=user_id)
+    columns = pg.get_table_schemas(schema_name=schema_name)
+
     # Format the prompts
     prompt = sql_query_prompt.format(columns=columns, query=query)
     system_prompt = sql_system_prompt.format(date=date)
@@ -111,26 +115,27 @@ def upload_csv(csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str
     Uploads a CSV file to a supplied MongoDB collection.
     Includes type-inference via LLM.
     """
+
     df = pd.read_csv(csv)
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
 
-    # Replace hyphens in the UUID
-    user_id = re.sub(r"-", "_", user_id)
+    # Get relevant schema name
+    schema_name = get_schema_name_from_user_id(user_id=user_id)
 
     # Create the schema
-    pg.create_schema_for_user_if_not_exists(user_id=user_id)
+    pg.create_schema_for_user_if_not_exists(schema_name=schema_name)
 
     # Create the table
     columns = df.columns.tolist()
     first_row = df.iloc[0]
 
     # TODO: Prevent SQL injections via file_name
-    table_name = f"{user_id}.{file_name}"
+    table_name = f"{schema_name}.{file_name}"
     _create_sql_table_for_csv(columns=columns, first_row=first_row, table_name=table_name, pg=pg)
 
     # Get the table
-    table = pg.get_table_by_name(table_name=table_name, user_id=user_id)
+    table = pg.get_table_by_name(table_name=table_name, schema_name=schema_name)
 
     # This takes way too long
     for _, row in df.iterrows():
@@ -157,3 +162,11 @@ def transpose_df(df: pd.DataFrame) -> List[object]:
             obj[col] = val
         res.append(obj)
     return res
+
+
+def get_schema_name_from_user_id(user_id: str) -> str:
+    """
+    Formats a raw user_id (UUID) into a Postgres-compatible schema name.
+    """
+    user_id = re.sub(r"-", "_", user_id)
+    return f"schema_{user_id}"
