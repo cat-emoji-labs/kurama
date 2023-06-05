@@ -15,7 +15,7 @@ class PostgresDatabase:
 
     def _build_schema_json_from_table(self, table):
         return {
-            "name": table.name,
+            "name": f"{table.schema}.{table.name}",
             "columns": [
                 {
                     "name": column.name,
@@ -39,25 +39,34 @@ class PostgresDatabase:
             ]
         return schema_names
 
-    def _get_tables(self):
+    def _get_tables(self, user_id):
         metadata = MetaData()
-        metadata.reflect(bind=self.engine)
+        metadata.reflect(bind=self.engine, schema=user_id)
         return [table for table in metadata.sorted_tables]
 
     def _get_table_names(self):
         return [table.name for table in self._get_tables()]
 
-    def get_table_by_name(self, table_name):
-        metadata = MetaData()
-        metadata.reflect(bind=self.engine)
-        table = metadata.tables.get(table_name)
-        return table
-
-    def _get_table_schemas(self):
+    def get_table_schemas(self, user_id):
         """
         Retrieves a list of table schemas in JSON format from a list of table names.
         """
-        return [self._build_schema_json_from_table(table) for table in self._get_tables()]
+        return [self._build_schema_json_from_table(table) for table in self._get_tables(user_id)]
+
+    def get_table_by_name(self, table_name, user_id):
+        """
+        Retrieve a SQLAlchemy Table object by the table_name.
+        """
+        metadata = MetaData()
+        metadata.reflect(bind=self.engine, schema=user_id)
+        table = metadata.tables.get(table_name)
+        return table
+
+    def create_schema_for_user_if_not_exists(self, user_id) -> None:
+        with self.engine.connect() as connection:
+            query = text(f"CREATE SCHEMA IF NOT EXISTS {user_id}")
+            connection.execute(query)
+            connection.commit()
 
     def create_table(self, sql):
         with self.engine.connect() as connection:
@@ -71,6 +80,9 @@ class PostgresDatabase:
             connection.commit()
 
     def execute(self, query):
+        """
+        This method should only be used for read-only queries
+        """
         with self.engine.connect() as connection:
             result = connection.execute(text(query))
             connection.commit()

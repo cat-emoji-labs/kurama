@@ -5,6 +5,7 @@ from kurama.config.environment import HOST, PORT
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import datetime
+import re
 
 app = FastAPI()
 
@@ -26,10 +27,12 @@ async def upload(user_id: str, collection_id: str, csvFile: UploadFile = File(..
     try:
         # TODO: Implement ID-based tables/schemas
         # TODO: Handle file types other than CSV
+
+        # Replace hyphens in the UUID - this should be middleware
+        user_id = re.sub(r"-", "_", user_id)
+
         upload_csv(
-            csv=csvFile.file,
-            name=csvFile.filename.split(".")[0],
-            pg=pg,
+            csv=csvFile.file, file_name=csvFile.filename.split(".")[0], pg=pg, user_id=user_id
         )
         return {"message": "CSV file uploaded successfully"}
     except Exception as e:
@@ -45,7 +48,11 @@ async def ask(request: Request, user_id: str):
 
     try:
         # TODO: Add an agentic routing layer
-        columns = pg._get_table_schemas()
+
+        # Replace hyphens in the UUID - this should be middleware
+        user_id = re.sub(r"-", "_", user_id)
+
+        columns = pg.get_table_schemas(user_id=user_id)
         df = retrieve_df_for_query(
             columns,
             query,

@@ -33,14 +33,14 @@ Remember to include IF NOT EXISTS.
 sql_create_table_prompt = """
 You are given the name of the table, the columns of the table, and an example row. Your job is to create a PostgreSQL Create Table statement matching the schema of the columns.
 
+Table Name:
+{table_name}
+
 Columns:
 {columns}
 
 Row:
 {row}
-
-Table Name:
-{name}
 
 Delineate SQL with triple quotes (```).
 """
