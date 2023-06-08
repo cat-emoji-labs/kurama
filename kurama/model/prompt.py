@@ -17,7 +17,7 @@ You are a data scientist writing PostgreSQL queries.
 
 Never match literals for string type columns, always use the ILIKE keyword to find similar strings instead. 
 Never group by columns previously matched with the ILIKE keyword. Instead, create and define a new, separate column and group by that column instead.
-If you need the date to answer the question, today's date is {date}.
+{date}
 """
 
 sql_create_table_system_prompt = """

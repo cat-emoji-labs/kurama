@@ -92,6 +92,12 @@ def retrieve_df_for_query(
     user_id: str,
     date: datetime.datetime = datetime.datetime.today(),
 ):
+    # Don't insert date unless necessary for query
+    if re.search(r"(\d+)\s*(day|days|month|months)", query):
+        date = f"Today's date is {date}."
+    else:
+        date = ""
+
     # Retrieve relevant columns and get schema name
     schema_name = get_schema_name_from_user_id(user_id=user_id)
     columns = pg.get_table_schemas(schema_name=schema_name)
