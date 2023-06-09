@@ -1,10 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Request
-from kurama.database.utils import (
-    upload_csv,
-    retrieve_df_for_query,
-    transpose_df,
-    get_schema_name_from_user_id,
-)
+from kurama.database.utils import upload_csv, retrieve_df_for_query, transpose_df, delete_files
 from kurama.database.database import PostgresDatabase
 from kurama.config.environment import HOST, PORT
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,13 +22,14 @@ app.add_middleware(
 )
 
 
-@app.post("/upload/{user_id}/{collection_id}")
-async def upload(user_id: str, collection_id: str, csvFile: UploadFile = File(...)):
+@app.post("/upload/{user_id}/{document_id}")
+async def upload(user_id: str, document_id: str, csvFile: UploadFile = File(...)):
     try:
         # TODO: Implement ID-based tables/schemas
         # TODO: Handle file types other than CSV
         upload_csv(
             csv=csvFile.file,
+            document_id=document_id,
             file_name=csvFile.filename.split(".")[0],
             pg=pg,
             user_id=user_id,
@@ -60,6 +56,19 @@ async def ask(request: Request, user_id: str):
         # Format results
         transposed_df = transpose_df(df=df)
         return {"message": "success", "data": transposed_df}
+    except Exception as e:
+        print(e)
+        return {"error": str(e)}
+
+
+@app.post("/delete")
+async def delete(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id")
+    document_ids = body.get("document_ids")
+    try:
+        delete_files(user_id=user_id, document_ids=document_ids, pg=pg)
+        return {"message": "success"}
     except Exception as e:
         print(e)
         return {"error": str(e)}

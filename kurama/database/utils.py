@@ -116,7 +116,9 @@ def retrieve_df_for_query(
     return df
 
 
-def upload_csv(csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str) -> None:
+def upload_csv(
+    csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str, document_id: str
+) -> None:
     """
     Uploads a CSV file to a supplied MongoDB collection.
     Includes type-inference via LLM.
@@ -135,9 +137,7 @@ def upload_csv(csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str
     # Create the table
     columns = df.columns.tolist()
     first_row = df.iloc[0]
-
-    # TODO: Prevent SQL injections via file_name
-    table_name = f"{schema_name}.{file_name}"
+    table_name = build_table_name(schema_name=schema_name, document_id=document_id)
     _create_sql_table_for_csv(columns=columns, first_row=first_row, table_name=table_name, pg=pg)
 
     # Get the table
@@ -152,6 +152,16 @@ def upload_csv(csv: BinaryIO, file_name: str, pg: PostgresDatabase, user_id: str
             # Discard rows that don't conform to the schema
             # TODO: Display discarded rows to the user
             print("Couldn't insert: ", row.values.tolist())
+
+
+def delete_files(user_id: str, pg: PostgresDatabase, document_ids: List[str]) -> None:
+    schema_name = get_schema_name_from_user_id(user_id=user_id)
+    for document_id in document_ids:
+        table_name = build_table_name(schema_name=schema_name, document_id=document_id)
+        try:
+            pg.drop_table(table_name=table_name)
+        except Exception as e:
+            print(f"Couldn't drop table {table_name}: {str(e)}")
 
 
 def transpose_df(df: pd.DataFrame) -> List[object]:
@@ -176,3 +186,11 @@ def get_schema_name_from_user_id(user_id: str) -> str:
     """
     user_id = re.sub(r"-", "_", user_id)
     return f"schema_{user_id}"
+
+
+def build_table_name(schema_name: str, document_id: str) -> str:
+    """
+    Formats a schema_name and document_id into a table_name
+    """
+    document_id = re.sub(r"-", "_", document_id)
+    return f"{schema_name}.csv_{document_id}"

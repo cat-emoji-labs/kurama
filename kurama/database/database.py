@@ -47,6 +47,8 @@ class PostgresDatabase:
     def _get_table_names(self):
         return [table.name for table in self._get_tables()]
 
+    ### Public Methods
+
     def get_table_schemas(self, schema_name):
         """
         Retrieves a list of table schemas in JSON format from a list of table names.
@@ -93,3 +95,9 @@ class PostgresDatabase:
             columns = result.keys()
             df = pd.DataFrame(rows, columns=columns)
             return df
+
+    def drop_table(self, table_name):
+        with self.engine.connect() as connection:
+            query = text(f"DROP TABLE {table_name}")
+            connection.execute(query)
+            connection.commit()
