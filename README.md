@@ -4,12 +4,17 @@
 
 - [Poetry](https://python-poetry.org/) should be installed on your system.
 
+- Ensure the database is running in a Docker container:
+  ```
+  make postgres
+  ```
+
 - Ensure you have these environment variables in a .env:
   ```
-  OPENAI_API_KEY = <OPEN_AI_KEY>
-  DB_URL = <DB_URL>
-  PORT = <PORT>
-  HOST = <HOST>
+  OPENAI_API_KEY=<OPEN_AI_KEY>
+  DB_URL=postgresql://user:pass@localhost:5433/test
+  PORT=5000
+  HOST=0.0.0.0
   ```
 
 ## Installation
