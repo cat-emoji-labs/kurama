@@ -58,7 +58,9 @@ def _parse_sql_from_llm_out(llm_output: str):
 
     pattern = r"```(.*?)```"
     matches = re.findall(pattern, llm_output, re.DOTALL)
-    return matches[-1].replace("SQL", "")  # only return the last SQL query
+    return re.sub(
+        r"(?i)sql", "", matches[-1]
+    )  # only return the last SQL query, and parse out 'SQL' and 'sql' prefix
 
 
 def _is_valid_sql(sql: str):
