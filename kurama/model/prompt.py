@@ -74,7 +74,7 @@ Error:
 ### SQL ###
 
 retrieval_prompt = """
-Given a list of file names and descriptions, output the UUID of the file that can most likely be used to answer the query. If you're uncertain, please give your best answer.
+Given a list of file names and descriptions, output the UUID of the file that can most likely be used to answer the query. If you're unsure or none of the files match, please give your best answer.
 
 The files are given in this format: UUID,name,description
 
