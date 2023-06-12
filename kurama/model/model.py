@@ -1,6 +1,7 @@
 import openai
 from kurama.config.constants import OPENAI_MODEL, DEFAULT_TEMPERATURE
 from kurama.config.environment import OPENAI_API_KEY
+from kurama.model.prompt import default_system_prompt
 
 openai.api_key = OPENAI_API_KEY
 
@@ -13,7 +14,9 @@ def ask_model(messages):
     )["choices"][0]["message"]["content"]
 
 
-def ask_model_with_retry(prompt, system_prompt, func=lambda x: x, max_retries=3, retry_prompt=None):
+def ask_model_with_retry(
+    prompt, system_prompt=default_system_prompt, func=lambda x: x, max_retries=3, retry_prompt=None
+):
     """
     Retries `ask_model` if the `func` argument performed on the LLM output throws an error.
     This is useful since model outputs are undeterministic and may be malformatted.

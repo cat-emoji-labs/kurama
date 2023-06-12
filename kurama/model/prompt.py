@@ -10,6 +10,10 @@ Output a JSON where the keys are the names of each column, and the values are th
 For columns that are likely to be date-time objects, list the value as "datetime" instead.
 """
 
+default_system_prompt = """
+You are a helpful assistant. Keep your answers brief and concise.
+"""
+
 ### SQL ###
 
 sql_system_prompt = """
@@ -68,3 +72,38 @@ Error:
 """
 
 ### SQL ###
+
+retrieval_prompt = """
+Given a list of file names and descriptions, output the UUID of the file that can most likely be used to answer the query. If you're uncertain, please give your best answer.
+
+The files are given in this format: UUID,name,description
+
+Files:
+{files}
+
+Query:
+{query}
+
+Think step by step, and output the relevant UUID delineated with triple quotes (```).
+
+Example output:
+```UUID('342ac220-7134-4e0c-b452-c0842f19b44e')```
+"""
+
+tagging_prompt = """
+Given the file name, columns, and first few rows of this CSV file, create up to 5 metadata tags that best describe what this file might be about.
+
+File name:
+{file_name}
+
+Columns:
+{columns}
+
+Rows:
+{rows}
+
+Delimit each metadata tag with the ',' character.
+
+Example output:
+`employees,location,salary,hours`
+"""

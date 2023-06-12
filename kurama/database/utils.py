@@ -86,6 +86,31 @@ def _create_sql_table_for_csv(
     )
 
 
+def _get_metadata_tags(file_name: str, columns: List[str], rows: List[str]):
+    prompt = tagging_prompt.format(file_name=file_name, columns=columns, rows=rows)
+    return ask_model_with_retry(prompt=prompt)
+
+
+def _is_uuid(llm_output: str) -> str:
+    pattern = r"UUID\('([^']+)'\)"
+    matches = re.findall(pattern, llm_output)
+    return matches[0] if matches else ""
+
+
+def _parse_uuid(llm_output: str) -> str:
+    pattern = r"```(.*?)```"
+    matches = re.findall(pattern, llm_output, re.DOTALL)
+    return matches[0]
+
+
+def _get_best_file(files, query: str):
+    files_str = ""
+    for file in files:
+        files_str += f"{file[0],file[3],file[5]}\n"
+    prompt = retrieval_prompt.format(files=files_str, query=query)
+    return ask_model_with_retry(prompt=prompt, func=[_parse_uuid, _is_uuid])
+
+
 def retrieve_df_for_query(
     query: str,
     pg: PostgresDatabase,
@@ -100,10 +125,15 @@ def retrieve_df_for_query(
 
     # Retrieve relevant columns and get schema name
     schema_name = get_schema_name_from_user_id(user_id=user_id)
-    columns = pg.get_table_schemas(schema_name=schema_name)
+
+    # Get document descriptions
+    files = pg.get_documents_for_user(user_id=user_id)
+    document_id = _get_best_file(files=files, query=query)
+    table_name = build_table_name(schema_name=schema_name, document_id=document_id)
+    relevant_schema = pg.get_table_schema_by_name(table_name=table_name, schema_name=schema_name)
 
     # Format the prompts
-    prompt = sql_query_prompt.format(columns=columns, query=query)
+    prompt = sql_query_prompt.format(columns=relevant_schema, query=query)
     system_prompt = sql_system_prompt.format(date=date)
 
     # Get dataframe
@@ -128,6 +158,11 @@ def upload_csv(
     # Replace NaN values
     df = df.where(pd.notnull(df), None)
 
+    # # Get metadata tags
+    # tags = _get_metadata_tags(file_name=file_name, columns=df.columns.to_list(), rows=df.head())
+    # print("tags", tags)
+    # return
+
     # Get relevant schema name
     schema_name = get_schema_name_from_user_id(user_id=user_id)
 
@@ -151,7 +186,8 @@ def upload_csv(
         except Exception as e:
             # Discard rows that don't conform to the schema
             # TODO: Display discarded rows to the user
-            print("Couldn't insert: ", row.values.tolist())
+            # print("Couldn't insert: ", row.values.tolist(), str(e))
+            pass
 
 
 def delete_files(user_id: str, pg: PostgresDatabase, document_ids: List[str]) -> None:

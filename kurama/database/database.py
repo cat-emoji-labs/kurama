@@ -67,6 +67,20 @@ class PostgresDatabase:
         table = metadata.tables.get(table_name)
         return table
 
+    def get_table_schema_by_name(self, table_name, schema_name):
+        table = self.get_table_by_name(table_name=table_name, schema_name=schema_name)
+        return self._build_schema_json_from_table(table=table)
+
+    def get_documents_for_user(self, user_id) -> list[str]:
+        with self.engine.connect() as connection:
+            query = text("SELECT * FROM documents WHERE user_id = :user_id").bindparams(
+                user_id=user_id
+            )
+            result = connection.execute(query)
+            connection.commit()
+            rows = result.fetchall()
+            return rows
+
     def create_schema_for_user_if_not_exists(self, schema_name) -> None:
         with self.engine.connect() as connection:
             query = text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
