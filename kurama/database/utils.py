@@ -96,7 +96,7 @@ def _get_metadata_tags(file_name: str, columns: List[str], rows: List[str]):
 def _is_uuid(llm_output: str) -> str:
     pattern = r"UUID\('([^']+)'\)"
     matches = re.findall(pattern, llm_output)
-    return matches[0] if matches else ""
+    return matches[0]
 
 
 def _parse_uuid(llm_output: str) -> str:
@@ -166,6 +166,7 @@ def answer_query(
         user_id=user_id,
         date=date,
     )
+    print("DF:", df)
     if with_summary:
         return _summarize(df=df, query=query)
     return transpose_df(df=df)

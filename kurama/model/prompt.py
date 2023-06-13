@@ -74,7 +74,9 @@ Error:
 ### SQL ###
 
 retrieval_prompt = """
-Given a list of file names and descriptions, output the UUID of the file that can most likely be used to answer the query. If you're unsure or none of the files match, please give your best answer.
+Given a list of file names and descriptions, output the UUID of the file that can most likely be used to answer the query.
+If you're unsure or none of the files match, please give your best answer.
+Think step by step, and explain your thought process.
 
 The files are given in this format: UUID,name,description
 
@@ -110,6 +112,7 @@ Example output:
 
 summarize_prompt = """
 Given a user query, and data which answers that user query, summarize the data provided, in response to the user query.
+Be confident in your answer, and do not make references to "the data provided" or similar terms.
 
 Query:
 {query}
