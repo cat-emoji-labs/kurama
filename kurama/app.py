@@ -57,7 +57,7 @@ async def ask(request: Request, user_id: str):
         return {"message": "success", "data": result}
     except Exception as e:
         print(e)
-        return {"error": str(e)}
+        return {"error": str(e), "data": "Sorry, something went wrong. Please try again later."}
 
 
 @app.post("/delete")
