@@ -113,6 +113,11 @@ def _get_best_file(files, query: str):
     return ask_model_with_retry(prompt=prompt, func=[_parse_uuid, _is_uuid])
 
 
+def _summarize(df: pd.DataFrame, query: str) -> str:
+    prompt = summarize_prompt.format(data=df.to_dict(), query=query)
+    return ask_model_with_retry(prompt=prompt)
+
+
 def retrieve_df_for_query(
     query: str,
     pg: PostgresDatabase,
@@ -146,6 +151,24 @@ def retrieve_df_for_query(
         retry_prompt=retry_sql_query_prompt,
     )
     return df
+
+
+def answer_query(
+    query: str,
+    pg: PostgresDatabase,
+    user_id: str,
+    date: datetime.datetime = datetime.datetime.today(),
+    with_summary=True,
+):
+    df = retrieve_df_for_query(
+        query,
+        pg=pg,
+        user_id=user_id,
+        date=date,
+    )
+    if with_summary:
+        return _summarize(df=df, query=query)
+    return transpose_df(df=df)
 
 
 def upload_csv(

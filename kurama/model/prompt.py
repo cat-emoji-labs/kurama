@@ -107,3 +107,13 @@ Delimit each metadata tag with the ',' character.
 Example output:
 `employees,location,salary,hours`
 """
+
+summarize_prompt = """
+Given a user query, and data which answers that user query, summarize the data provided, in response to the user query.
+
+Query:
+{query}
+
+Data:
+{data}
+"""

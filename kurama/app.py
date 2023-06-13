@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Request
-from kurama.database.utils import upload_csv, retrieve_df_for_query, transpose_df, delete_files
+from kurama.database.utils import upload_csv, answer_query, transpose_df, delete_files
 from kurama.database.database import PostgresDatabase
 from kurama.config.environment import HOST, PORT
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,15 +47,14 @@ async def ask(request: Request, user_id: str):
     print("Query: ", query)
 
     try:
-        df = retrieve_df_for_query(
+        result = answer_query(
             query,
             pg=pg,
             user_id=user_id,
             date=datetime.datetime.strptime("June 20th 2019", "%B %dth %Y"),
         )
         # Format results
-        transposed_df = transpose_df(df=df)
-        return {"message": "success", "data": transposed_df}
+        return {"message": "success", "data": result}
     except Exception as e:
         print(e)
         return {"error": str(e)}
